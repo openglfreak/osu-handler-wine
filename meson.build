@@ -21,4 +21,9 @@
 #
 
 project('osu-handler-wine', 'c')
-executable('osu-handler-wine', 'main.c', 'procdir.c')
+gio = dependency('gio-2.0')
+executable(
+    'osu-handler-wine',
+    'main.c', 'procdir.c', 'notifications.c',
+    dependencies: gio
+)

@@ -29,16 +29,17 @@
 #include "inline.h" /* inline */
 #include "procdir.h" /* close_procdir, open_procdir, procdir_dirfd,
                         procdir_handle, procdir_next_process */
+#include "notifications.h" /* show_notification */
 #include "static_string.h" /* static_strlen, static_endswith, static_startswith */
 
 #include <assert.h> /* assert */
+#include <ctype.h> /* toupper */
 #include <dirent.h> /* struct dent */
 #include <errno.h> /* ENOTSUP, errno */
 #include <fcntl.h> /* O_DIRECTORY, O_SEARCH, O_RDONLY, openat */
 #include <stddef.h> /* size_t, ssize_t */
-#include <stdio.h> /* perror */
 #include <stdlib.h> /* free, malloc, realloc */
-#include <string.h> /* memcmp, memchr */
+#include <string.h> /* memcmp, memchr, strerror, strdup */
 #include <sys/stat.h> /* fstat, struct stat */
 #include <sys/types.h> /* uid_t */
 #include <unistd.h> /* close, execve, getuid, read, readlinkat */
@@ -301,8 +302,19 @@ static inline int handle_dir(int const proc_dirfd,
 
 static int handle_error(int error)
 {
-    errno = error;
-    perror("error");
+    char* error_message;
+
+    errno = 0;
+    error_message = strerror(error);
+    if (errno != 0 || !error_message)
+        error_message = "Unknown error";
+    error_message = strdup(error_message);
+    if (error_message && error_message[0])
+    {
+        error_message[0] = toupper(error_message[0]);
+        show_notification(error_message);
+        free(error_message);
+    }
 
     error &= 0xFF;
     return error ? error : 1;
@@ -336,5 +348,9 @@ int main(int argc, char* argv[])
 
     close_procdir(pdhandle);
 
-    return error != 0 ? handle_error(error) : 0;
+    if (error != 0)
+        return handle_error(error);
+
+    show_notification("Could not find a running osu! instance");
+    return 0;
 }
