@@ -36,7 +36,7 @@ typedef struct procdir_struct {
     int dirfd;
 } procdir_struct;
 
-int open_procdir(procdir_struct** out_pdhandle)
+int open_procdir(procdir_struct** const out_pdhandle)
 {
     procdir_struct* p;
 
@@ -57,7 +57,7 @@ int open_procdir(procdir_struct** out_pdhandle)
     return 0;
 }
 
-int procdir_dirfd(procdir_struct* p)
+int procdir_dirfd(procdir_struct* const p)
 {
     if (p->dirfd == -1)
         p->dirfd = dirfd(p->dirptr);
@@ -65,23 +65,28 @@ int procdir_dirfd(procdir_struct* p)
     return p->dirfd;
 }
 
-int procdir_next_process(procdir_struct* p, struct dirent** out_dent)
-{
-    errno = 0;
-
-    do {
-        *out_dent = readdir(p->dirptr);
 #ifdef _DIRENT_HAVE_D_TYPE
-    } while (errno == 0 && *out_dent && ((*out_dent)->d_type == DT_DIR ||
-        (*out_dent)->d_type == DT_UNKNOWN) && !is_number((*out_dent)->d_name));
+#define may_be_dir(dent) \
+    ((dent)->d_type == DT_DIR || (dent)->d_type == DT_UNKNOWN)
+#define is_process_dir(dent) (may_be_dir((dent)) && is_number((dent)->d_name))
 #else
-    } while (errno == 0 && *out_dent && !is_number((*out_dent)->d_name));
+#define is_process_dir(dent) (is_number((dent)->d_name))
 #endif
 
+int procdir_next_process(procdir_struct* const p, struct dirent** const out_dent)
+{
+    struct dirent* dent;
+
+    errno = 0;
+    do {
+        dent = readdir(p->dirptr);
+    } while (errno == 0 && dent && !is_process_dir(dent));
+
+    *out_dent = dent;
     return errno;
 }
 
-void close_procdir(procdir_struct* p)
+void close_procdir(procdir_struct* const p)
 {
     closedir(p->dirptr);
     free(p);
