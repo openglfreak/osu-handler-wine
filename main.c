@@ -240,6 +240,12 @@ static inline bool construct_envp(char* environ,
         if (static_startswith((size_t)(p - environ), environ,
                 "WINELOADERNOEXEC="))
             continue;
+        if (static_startswith((size_t)(p - environ), environ,
+                "WINEPRELOADRESERVE="))
+            continue;
+        if (static_startswith((size_t)(p - environ), environ,
+                "WINESERVERSOCKET="))
+            continue;
 
         *p2++ = environ;
         assert(n-- > 0);
