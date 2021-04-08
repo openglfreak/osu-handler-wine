@@ -1,4 +1,4 @@
-/* Copyright (C) 2019 Torge Matthies */
+/* Copyright (C) 2019-2021 Torge Matthies */
 /*
  * This file is part of osu-handler-wine.
  *
