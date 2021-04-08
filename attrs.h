@@ -25,13 +25,13 @@
 #ifndef __ATTRS_H__
 #define __ATTRS_H__
 
-#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 96)
+#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 96) || (defined(__clang__) && __has_attribute(pure))
 #define attr_pure __attribute__ ((pure))
 #else
 #define attr_pure
 #endif
 
-#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 5)
+#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 5) || (defined(__clang__) && __has_attribute(const))
 #define attr_const __attribute__ ((const))
 #else
 #define attr_const
