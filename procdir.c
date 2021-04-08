@@ -1,4 +1,4 @@
-/* Copyright (C) 2019 Torge Matthies */
+/* Copyright (C) 2019-2021 Torge Matthies */
 /*
  * This file is part of osu-handler-wine.
  *
@@ -31,6 +31,10 @@
 #include <errno.h> /* ENOMEM, errno */
 #include <stdlib.h> /* free, malloc */
 
+#ifndef PROCFS_PATH
+#define PROCFS_PATH "/proc"
+#endif
+
 typedef struct procdir_struct {
     DIR* dirptr;
     int dirfd;
@@ -44,7 +48,7 @@ int open_procdir(procdir_struct** const out_pdhandle)
     if (!p)
         return ENOMEM;
 
-    p->dirptr = opendir("/proc");
+    p->dirptr = opendir(PROCFS_PATH);
     p->dirfd = -1;
 
     if (!p->dirptr)
