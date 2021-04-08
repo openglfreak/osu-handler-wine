@@ -302,19 +302,20 @@ static inline int handle_dir(int const proc_dirfd,
 
 static int handle_error(int error)
 {
-    char* error_message;
+    char const* error_message;
+    char* duplicated_message = 0;
 
     errno = 0;
     error_message = strerror(error);
-    if (errno != 0 || !error_message)
+    if (errno != 0 || !error_message || !error_message[0])
         error_message = "Unknown error";
-    error_message = strdup(error_message);
-    if (error_message && error_message[0])
+    else if ((duplicated_message = strdup(error_message)))
     {
-        error_message[0] = toupper(error_message[0]);
-        show_notification(error_message);
-        free(error_message);
+        duplicated_message[0] = toupper(duplicated_message[0]);
+        error_message = duplicated_message;
     }
+    show_notification(error_message);
+    free(duplicated_message);
 
     error &= 0xFF;
     return error ? error : 1;
