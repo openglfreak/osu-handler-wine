@@ -26,7 +26,9 @@
 #define __INLINE_H__
 
 #if !defined(__cplusplus) && !(__STDC_VERSION__ >= 199901L)
-#define inline
+#ifdef __GNUC__
+#define inline __inline__
+#endif
 #endif
 
 #endif
