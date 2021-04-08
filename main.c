@@ -1,4 +1,4 @@
-/* Copyright (C) 2019 Torge Matthies */
+/* Copyright (C) 2019-2021 Torge Matthies */
 /*
  * This file is part of osu-handler-wine.
  *
@@ -341,7 +341,7 @@ int main(int argc, char* argv[])
 
     exit_loop = false;
     do {
-        if ((error = procdir_next_process(pdhandle, &dent)) != 0 || dent)
+        if ((error = procdir_next_process(pdhandle, &dent)) != 0 || !dent)
             break;
         if ((error = handle_dir(dirfd, dent, argv, &exit_loop)) != 0)
             break;
