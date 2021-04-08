@@ -36,7 +36,7 @@ static inline attr_const bool is_digit(char const c)
 
 static inline attr_const bool is_number(char const* str)
 {
-    if (*str == '\0')
+    if (!is_digit(*str))
         return false;
     while (is_digit(*++str));
     return *str == '\0';
