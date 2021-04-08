@@ -37,16 +37,9 @@
 #define attr_const
 #endif
 
-#if __GNUC__ > 3 || (__GNUC__ == 3 && (__GNUC_MINOR__ > 1 || (__GNUC_MINOR__ == 1 && __GNUC_PATCHLEVEL__ >= 1)))
-#define attr_always_inline __attribute__ ((always_inline))
-#else
-#define attr_always_inline
-#endif
-
 #ifndef NO_ATTR_ALIASES
 #define pure attr_pure
 #define fconst attr_const
-#define always_inline attr_always_inline
 #endif
 
 #endif
