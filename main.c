@@ -279,14 +279,15 @@ static inline int handle_dir(int const proc_dirfd,
     if (dirfd == -1)
         return (errno == ESRCH || errno == ENOENT) ? 0 : errno;
 
-    b = test_dir(dirfd, &exe_path);
+    if (!test_dir(dirfd, &exe_path))
+    {
+        close(dirfd);
+        return 0;
+    }
 
-    b = b && read_environ(dirfd, &environ, &environ_size);
-
+    b = read_environ(dirfd, &environ, &environ_size);
     close(dirfd);
-
     b = b && construct_envp(environ, environ_size, &envp);
-
     if (!b)
     {
         *out_error = true;
