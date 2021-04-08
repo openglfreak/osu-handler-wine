@@ -352,6 +352,7 @@ int main(int argc, char* argv[])
     if (error != 0)
         return handle_error(error);
 
-    show_notification("Could not find a running osu! instance");
+    if (!exit_loop)
+        show_notification("Could not find a running osu! instance");
     return 0;
 }
