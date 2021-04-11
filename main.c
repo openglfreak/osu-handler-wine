@@ -141,68 +141,68 @@ static inline bool test_dir(int const dirfd, char** const out_exe_path)
     return true;
 }
 
-static inline bool read_environ(int const dirfd, char** const out_environ,
+static inline bool try_realloc(void** const ptr, size_t const new_size)
+{
+    void* const new_ptr = realloc(*ptr, new_size);
+    if (new_ptr) *ptr = new_ptr;
+    return !!new_ptr;
+}
+
+#define malloc_overhead 32
+
+static inline bool read_environ_content(int const fd, char** const out_environ,
     size_t* const out_environ_size)
 {
-#define malloc_overhead 32
-    int fd;
     size_t bufsize;
     char* buffer;
     size_t pos;
+    ssize_t n;
+
+    bufsize = 8192 - malloc_overhead;
+    buffer = (char*)malloc(sizeof(char) * bufsize);
+    if (!buffer)
+        return false;
+
+    pos = 0;
+    while ((n = read(fd, &buffer[pos], bufsize - pos)) > 0)
+    {
+        pos += (size_t)n;
+        if (pos < bufsize)
+            continue;
+
+        bufsize = (bufsize + malloc_overhead) * 2 - malloc_overhead;
+        if (!try_realloc((void**)&buffer, sizeof(char) * bufsize))
+        {
+            free(buffer);
+            return false;
+        }
+    }
+    if (n < 0)
+    {
+        free(buffer);
+        return false;
+    }
+
+    try_realloc((void**)&buffer, sizeof(char) * pos);
+    *out_environ = buffer;
+    *out_environ_size = pos;
+    return true;
+}
+
+static inline bool read_environ(int const dirfd, char** const out_environ,
+    size_t* const out_environ_size)
+{
+    int fd;
     bool ret;
 
     fd = openat(dirfd, "environ", O_RDONLY);
     if (fd == -1)
         return false;
 
-    bufsize = 8192 - malloc_overhead;
-    buffer = (char*)malloc(sizeof(char) * bufsize);
-    if (!buffer)
-    {
-        close(fd);
-        return false;
-    }
-
-    pos = 0;
-    ret = false;
-    while (true)
-    {
-        ssize_t n;
-        char* buffer2;
-
-        n = read(fd, &buffer[pos], bufsize - pos);
-        if (n < 0)
-        {
-            free(buffer);
-            break;
-        }
-
-        if (n == 0)
-        {
-            buffer2 = (char*)realloc(buffer, sizeof(char) * pos);
-            *out_environ = buffer2 ? buffer2 : buffer;
-            *out_environ_size = pos;
-            ret = true;
-            break;
-        }
-
-        pos += (size_t)n;
-        if (pos >= bufsize)
-        {
-            bufsize = (bufsize + malloc_overhead) * 2 - malloc_overhead;
-            buffer2 = (char*)realloc(buffer, sizeof(char) * bufsize);
-            if (!buffer2)
-            {
-                free(buffer);
-                break;
-            }
-            buffer = buffer2;
-        }
-    }
+    ret = read_environ_content(fd, out_environ, out_environ_size);
 
     close(fd);
     return ret;
-#undef malloc_overhead
 }
 
 static inline size_t count_envvars(char const* environ,
@@ -264,13 +264,6 @@ static inline void fill_envp_from_environ(char** const envp,
 
     *envp_end++ = 0;
     *out_envp_end = envp_end;
-}
-
-static inline bool try_realloc(void** const ptr, size_t const new_size)
-{
-    void* const new_ptr = realloc(*ptr, new_size);
-    if (new_ptr) *ptr = new_ptr;
-    return !!new_ptr;
 }
 
 static inline bool construct_envp_from_environ(char* const environ,
