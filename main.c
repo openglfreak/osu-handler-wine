@@ -205,7 +205,7 @@ static inline bool read_environ(int const dirfd, char** const out_environ,
 #undef malloc_overhead
 }
 
-static inline attr_const size_t count_envvars(char const* environ,
+static inline size_t count_envvars(char const* environ,
     char const* const environ_end)
 {
     size_t count = 0;
@@ -217,43 +217,79 @@ static inline attr_const size_t count_envvars(char const* environ,
     return count;
 }
 
-static inline bool construct_envp(char* environ,
+static struct filtered_envvar {
+    char const* envar;
+    size_t length;
+} const filtered_envvars[] = {
+#define FENVAR(x) { (x), static_strlen((x)) }
+    FENVAR("WINELOADERNOEXEC="),
+    FENVAR("WINEPRELOADRESERVE="),
+    FENVAR("WINESERVERSOCKET=")
+#undef FENVAR
+};
+
+static inline bool test_envar(char const* const envar_start,
+    char const* const envar_end)
+{
+    size_t i = 0;
+    for (; i < sizeof(filtered_envvars) / sizeof(filtered_envvars[0]); ++i)
+    {
+        char const* const envar = filtered_envvars[i].envar;
+        size_t const length = filtered_envvars[i].length;
+
+        if (envar_end - envar_start - 1 < length)
+            continue;
+        if (memcmp(envar_start, envar, length) == 0)
+            return false;
+    }
+    return true;
+}
+
+static inline void fill_envp_from_environ(char** const envp,
+    char*** const out_envp_end, char* environ, char* const environ_end)
+{
+    char** envp_end = envp;
+    char* envar_start = environ;
+    char* envar_end = environ;
+
+    while ((envar_end = (char*)memchr(envar_end, '\0', environ_end - envar_end)))
+    {
+        ++envar_end;
+        envar_start = environ;
+        environ = envar_end;
+
+        if (test_envar(envar_start, envar_end))
+            *envp_end++ = envar_start;
+    }
+
+    *envp_end++ = 0;
+    *out_envp_end = envp_end;
+}
+
+static inline bool try_realloc(void** const ptr, size_t const new_size)
+{
+    void* const new_ptr = realloc(*ptr, new_size);
+    if (new_ptr) *ptr = new_ptr;
+    return !!new_ptr;
+}
+
+static inline bool construct_envp_from_environ(char* const environ,
     size_t const environ_size, char*** const out_envp)
 {
     char* const environ_end = &environ[environ_size];
-    size_t n;
+    size_t envvar_count;
     char** envp;
-    char* p;
-    char** p2;
+    char** envp_end;
 
-    n = count_envvars(environ, environ_end);
-
-    envp = (char**)malloc(sizeof(char*) * n);
+    envvar_count = count_envvars(environ, environ_end);
+    envp = (char**)malloc(sizeof(char*) * envvar_count);
     if (!envp)
         return false;
 
-    p2 = envp;
-    for (p = environ; (p = (char*)memchr(p, '\0', environ_end - p)); environ = p)
-    {
-        ++p;
+    fill_envp_from_environ(envp, &envp_end, environ, environ_end);
 
-        if (static_startswith((size_t)(p - environ), environ,
-                "WINELOADERNOEXEC="))
-            continue;
-        if (static_startswith((size_t)(p - environ), environ,
-                "WINEPRELOADRESERVE="))
-            continue;
-        if (static_startswith((size_t)(p - environ), environ,
-                "WINESERVERSOCKET="))
-            continue;
-
-        *p2++ = environ;
-        assert(n-- > 0);
-    }
-    *p2++ = 0;
-
-    p2 = (char**)realloc(envp, sizeof(char*) * (p2 - envp));
-    *out_envp = p2 ? p2 : envp;
+    try_realloc((void**)&envp, sizeof(envp[0]) * (envp_end - envp));
+    *out_envp = envp;
     return true;
 }
 
@@ -293,7 +329,7 @@ static inline int handle_dir(int const proc_dirfd,
 
     b = read_environ(dirfd, &environ, &environ_size);
     close(dirfd);
-    b = b && construct_envp(environ, environ_size, &envp);
+    b = b && construct_envp_from_environ(environ, environ_size, &envp);
     if (!b)
     {
         *out_error = true;
