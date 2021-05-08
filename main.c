@@ -42,7 +42,7 @@
 #include <string.h> /* memcmp, memchr, strerror, strdup */
 #include <sys/stat.h> /* fstat, struct stat */
 #include <sys/types.h> /* uid_t */
-#include <unistd.h> /* close, execve, getuid, read, readlinkat */
+#include <unistd.h> /* close, execve, execvp, getuid, read, readlinkat */
 
 uid_t our_uid;
 
@@ -336,6 +336,13 @@ static inline int handle_dir(int const proc_dirfd,
     return errno;
 }
 
+static inline int run_launcher(char* argv[])
+{
+    argv[0] = (char*)"osu";
+    execvp("osu", argv);
+    return errno;
+}
+
 static int handle_error(int error)
 {
     char const* error_message;
@@ -386,6 +393,12 @@ int main(int argc, char* argv[])
     close_procdir(pdhandle);
 
     if (error != 0)
+        return handle_error(error);
+
+    if (!exit_loop)
+        error = run_launcher(argv);
+
+    if (error != 0 && error != ENOENT)
         return handle_error(error);
 
     if (!exit_loop)
